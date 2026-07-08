@@ -1,22 +1,40 @@
 import { useState, useEffect, useCallback, useRef, type CSSProperties } from 'react';
-import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { Search, ArrowRight, User } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from './lib/auth';
+import LoginModal from './LoginModal';
 
-/* ─── image data ─── */
+/* ─── Brand orange — sampled from fashion1 dress ─── */
+const BRAND_ORANGE = '#E8712A';
+const BRAND_ORANGE_LIGHT = '#F2863D';
+const BRAND_ORANGE_GLOW = 'rgba(232, 113, 42, 0.35)';
+
+/* ─── Image data ─── */
 const IMAGES = [
-  { src: 'https://fifth-gentle-45902158.figma.site/_components/v2/4de492f6d9cf8244ad5293233e5c6f52407d42fc/1.02464a56.png', bg: '#F4845F', panel: '#F79B7F' },
-  { src: 'https://fifth-gentle-45902158.figma.site/_components/v2/4de492f6d9cf8244ad5293233e5c6f52407d42fc/2.b977faab.png', bg: '#6BBF7A', panel: '#85CC92' },
-  { src: 'https://fifth-gentle-45902158.figma.site/_components/v2/4de492f6d9cf8244ad5293233e5c6f52407d42fc/3.4df853b4.png', bg: '#E882B4', panel: '#ED9DC4' },
-  { src: 'https://fifth-gentle-45902158.figma.site/_components/v2/4de492f6d9cf8244ad5293233e5c6f52407d42fc/4.4457fbce.png', bg: '#6EB5FF', panel: '#8DC4FF' },
+  { src: '/images/fashion1.png', bg: '#0B1120', panel: '#111d3a' },
+  { src: '/images/fashion2.png', bg: '#0d1528', panel: '#142040' },
+  { src: '/images/fashion3.png', bg: '#10192e', panel: '#162244' },
+  { src: '/images/fashion4.png', bg: '#0e1626', panel: '#131e38' },
 ];
 
 const TRANSITION_MS = 650;
 const EASE = 'cubic-bezier(0.4,0,0.2,1)';
+const AUTO_ROTATE_MS = 5000;
 
-/* ─── grain overlay SVG as data URI ─── */
+/* ─── Grain overlay SVG as data URI ─── */
 const GRAIN_SVG = `data:image/svg+xml,${encodeURIComponent(
   `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><filter id="g"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="4" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(#g)" opacity="0.08"/></svg>`
 )}`;
 
+/* ─── Quick occasion suggestions for the hero search ─── */
+const HERO_SUGGESTIONS = [
+  'Wedding in Lagos',
+  'Date Night',
+  'Job Interview',
+  'Owambe Party',
+];
+
+/* ─── Carousel role logic ─── */
 type Role = 'center' | 'left' | 'right' | 'back';
 
 function getRole(index: number, activeIndex: number): Role {
@@ -38,56 +56,69 @@ function getRoleStyle(role: Role, isMobile: boolean): CSSProperties {
     case 'center':
       return {
         ...base,
-        transform: `translateX(-50%) scale(${isMobile ? 1.25 : 1.68})`,
+        /* ── Scale adjusted to fit head: 1.75 (desktop), 1.35 (mobile) ── */
+        transform: `translateX(-50%) scale(${isMobile ? 1.35 : 1.75})`,
+        transformOrigin: 'bottom center',
         filter: 'blur(0px)',
         opacity: 1,
         zIndex: 20,
         left: '50%',
-        height: isMobile ? '60%' : '92%',
-        bottom: isMobile ? '22%' : '0',
+        height: isMobile ? '62%' : '90%',
+        bottom: isMobile ? '8%' : '-2%',
       };
     case 'left':
       return {
         ...base,
         transform: 'translateX(-50%) scale(1)',
         filter: 'blur(2px)',
-        opacity: 0.85,
+        opacity: 0.7,
         zIndex: 10,
-        left: isMobile ? '20%' : '30%',
+        left: isMobile ? '12%' : '26%',
         height: isMobile ? '16%' : '28%',
-        bottom: isMobile ? '32%' : '12%',
+        bottom: isMobile ? '38%' : '16%',
       };
     case 'right':
       return {
         ...base,
         transform: 'translateX(-50%) scale(1)',
         filter: 'blur(2px)',
-        opacity: 0.85,
+        opacity: 0.7,
         zIndex: 10,
-        left: isMobile ? '80%' : '70%',
+        left: isMobile ? '88%' : '74%',
         height: isMobile ? '16%' : '28%',
-        bottom: isMobile ? '32%' : '12%',
+        bottom: isMobile ? '38%' : '16%',
       };
     case 'back':
       return {
         ...base,
         transform: 'translateX(-50%) scale(1)',
         filter: 'blur(4px)',
-        opacity: 1,
+        opacity: 0.5,
         zIndex: 5,
         left: '50%',
         height: isMobile ? '13%' : '22%',
-        bottom: isMobile ? '32%' : '12%',
+        bottom: isMobile ? '38%' : '16%',
       };
   }
 }
 
+/* ═══════════════════════════════════════════════════
+   APP COMPONENT
+   ═══════════════════════════════════════════════════ */
 export default function App() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 640);
+  const [heroQuery, setHeroQuery] = useState('');
+  const [isHeroFocused, setIsHeroFocused] = useState(false);
+  const [ctaHovered, setCtaHovered] = useState(false);
+  const [isLoginModalOpen, setLoginModalOpen] = useState(false);
   const isAnimating = useRef(false);
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const heroInputRef = useRef<HTMLInputElement>(null);
+  const touchStartX = useRef(0);
 
-  /* ─── preload images ─── */
+  /* ─── Preload images ─── */
   useEffect(() => {
     IMAGES.forEach(({ src }) => {
       const img = new Image();
@@ -95,15 +126,15 @@ export default function App() {
     });
   }, []);
 
-  /* ─── responsive check ─── */
+  /* ─── Responsive breakpoint ─── */
   useEffect(() => {
     const onResize = () => setIsMobile(window.innerWidth < 640);
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
-  /* ─── navigate ─── */
-  const navigate = useCallback((dir: 'next' | 'prev') => {
+  /* ─── Navigate carousel ─── */
+  const navigateCarousel = useCallback((dir: 'next' | 'prev') => {
     if (isAnimating.current) return;
     isAnimating.current = true;
     setActiveIndex((prev) =>
@@ -114,26 +145,84 @@ export default function App() {
     }, TRANSITION_MS);
   }, []);
 
-  /* ─── keyboard navigation ─── */
+  /* ─── Auto-rotate carousel (arrows removed, so auto-advance keeps it alive) ─── */
+  useEffect(() => {
+    const interval = setInterval(() => {
+      navigateCarousel('next');
+    }, AUTO_ROTATE_MS);
+    return () => clearInterval(interval);
+  }, [navigateCarousel]);
+
+  /* ─── Keyboard navigation ─── */
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowRight') navigate('next');
-      else if (e.key === 'ArrowLeft') navigate('prev');
+      if (e.key === 'ArrowRight') navigateCarousel('next');
+      else if (e.key === 'ArrowLeft') navigateCarousel('prev');
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [navigate]);
+  }, [navigateCarousel]);
+
+  /* ─── Touch swipe support (replaces arrow buttons on mobile) ─── */
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    const delta = e.changedTouches[0].clientX - touchStartX.current;
+    if (Math.abs(delta) > 50) {
+      navigateCarousel(delta < 0 ? 'next' : 'prev');
+    }
+  };
+
+  /* ─── Hero search submit → Style Me wizard ─── */
+  const handleHeroSearch = () => {
+    const q = heroQuery.trim();
+    if (q) {
+      navigate(`/style-me?q=${encodeURIComponent(q)}`);
+    } else {
+      navigate('/style-me');
+    }
+  };
 
   return (
     <div
       style={{
         backgroundColor: IMAGES[activeIndex].bg,
         transition: `background-color ${TRANSITION_MS}ms ${EASE}`,
-        fontFamily: "'Inter', sans-serif",
+        fontFamily: "'Outfit', 'Inter', sans-serif",
       }}
       className="relative w-full min-h-screen overflow-hidden"
     >
-      <div className="relative w-full" style={{ height: '100vh', overflow: 'hidden' }}>
+      <div
+        className="relative w-full"
+        style={{ height: '100vh', overflow: 'hidden' }}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
+
+        {/* ── Header ── */}
+        <header style={{ position: 'absolute', top: 0, left: 0, right: 0, padding: isMobile ? '24px 20px' : '32px 48px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 100 }}>
+          <div style={{ fontFamily: "'Anton', sans-serif", fontSize: 22, color: 'white', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+            B4U-GO
+          </div>
+          <div>
+            {user ? (
+              <button onClick={() => navigate('/closet')} style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.2)', padding: '10px 20px', borderRadius: 100, color: 'white', fontSize: 14, fontWeight: 500, cursor: 'pointer', transition: 'all 0.2s' }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.15)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.4)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)'; }}
+              >
+                My Closet
+              </button>
+            ) : (
+              <button onClick={() => setLoginModalOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'transparent', border: 'none', color: 'white', fontSize: 14, fontWeight: 500, cursor: 'pointer', transition: 'all 0.2s' }}
+                onMouseEnter={(e) => e.currentTarget.style.color = BRAND_ORANGE}
+                onMouseLeave={(e) => e.currentTarget.style.color = 'white'}
+              >
+                <User size={16} /> Log In
+              </button>
+            )}
+          </div>
+        </header>
 
         {/* ── 1. Grain overlay ── */}
         <div
@@ -148,162 +237,295 @@ export default function App() {
           }}
         />
 
-        {/* ── 2. Giant ghost text ── */}
+        {/* ── 2. Giant ghost text — B4U-GO — with subtle parallax ── */}
         <div
           className="absolute inset-x-0 flex items-center justify-center pointer-events-none select-none"
-          style={{ zIndex: 2, top: '18%' }}
+          style={{ zIndex: 2, top: isMobile ? '22%' : '18%' }}
         >
           <span
+            className="hero-parallax"
             style={{
               fontFamily: "'Anton', sans-serif",
               fontSize: 'clamp(90px, 28vw, 380px)',
               fontWeight: 900,
               color: 'white',
-              opacity: 1,
+              opacity: 0.12,
               lineHeight: 1,
               textTransform: 'uppercase',
               letterSpacing: '-0.02em',
               whiteSpace: 'nowrap',
             }}
           >
-            3D SHAPE
+            B4U-GO
           </span>
         </div>
 
         {/* ── 3. Top-left brand label ── */}
         <div
-          className="absolute top-6 left-4 sm:left-8"
+          className="absolute top-6 left-4 sm:left-8 fade-in-up"
           style={{ zIndex: 60 }}
         >
-          <span className="text-xs font-semibold uppercase text-white" style={{ opacity: 0.9, letterSpacing: '0.18em' }}>
-            TOONHUB
+          <span
+            style={{
+              fontFamily: "'Anton', sans-serif",
+              fontSize: 14,
+              fontWeight: 400,
+              color: 'white',
+              opacity: 0.9,
+              letterSpacing: '0.18em',
+              textTransform: 'uppercase',
+            }}
+          >
+            B4U-GO
           </span>
         </div>
 
-        {/* ── 4. Carousel ── */}
+        {/* ── 4. Carousel — all images with motion ── */}
         <div className="absolute inset-0" style={{ zIndex: 3 }}>
           {IMAGES.map((item, index) => {
             const role = getRole(index, activeIndex);
             const style = getRoleStyle(role, isMobile);
+            /* Each role gets its own animation class */
+            const animClass =
+              role === 'center'
+                ? 'hero-float'
+                : role === 'back'
+                ? 'bg-figure-sway-slow'
+                : 'bg-figure-sway';
             return (
               <div key={index} style={style}>
-                <img
-                  src={item.src}
-                  alt={`Figurine ${index + 1}`}
-                  draggable={false}
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'contain',
-                    objectPosition: 'bottom center',
-                  }}
-                />
+                <div
+                  className={animClass}
+                  style={{ width: '100%', height: '100%' }}
+                >
+                  <img
+                    src={item.src}
+                    alt={`B4U-Go look ${index + 1}`}
+                    draggable={false}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'contain',
+                      objectPosition: 'bottom center',
+                    }}
+                  />
+                </div>
               </div>
             );
           })}
         </div>
 
-        {/* ── 5. Bottom-left text + nav ── */}
+        {/* ── 5. Dot indicators (orange active) ── */}
         <div
-          className="absolute bottom-6 left-4 sm:bottom-20 sm:left-24"
-          style={{ zIndex: 60, maxWidth: 320 }}
+          className="absolute flex gap-2"
+          style={{
+            zIndex: 60,
+            bottom: isMobile ? 14 : 28,
+            left: '50%',
+            transform: 'translateX(-50%)',
+          }}
         >
-          <p
-            className="font-bold uppercase tracking-widest mb-2 sm:mb-3 text-base sm:text-[22px] text-white"
-            style={{ opacity: 0.95, letterSpacing: '0.02em' }}
-          >
-            TOONHUB FIGURINES
-          </p>
-          <p
-            className="hidden sm:block text-xs sm:text-sm text-white mb-4 sm:mb-5"
-            style={{ opacity: 0.85, lineHeight: 1.6 }}
-          >
-            The artwork is stunning, shipped fully prepared. The finish is a
-            vision, the 3D craft is flawless. Many thanks! Wishing you the win.
-            Order now.
-          </p>
-          <div className="flex items-center gap-3">
+          {IMAGES.map((_, i) => (
             <button
-              onClick={() => navigate('prev')}
-              className="flex items-center justify-center rounded-full cursor-pointer"
+              key={i}
+              onClick={() => {
+                if (!isAnimating.current) setActiveIndex(i);
+              }}
+              className="dot-indicator"
+              aria-label={`View look ${i + 1}`}
               style={{
-                width: isMobile ? 48 : 64,
-                height: isMobile ? 48 : 64,
-                backgroundColor: 'transparent',
-                border: '2px solid white',
+                width: i === activeIndex ? 24 : 8,
+                height: 8,
+                borderRadius: 4,
+                border: 'none',
+                background:
+                  i === activeIndex
+                    ? BRAND_ORANGE
+                    : 'rgba(255,255,255,0.25)',
+                cursor: 'pointer',
+                transition: 'all 0.35s ease',
+                padding: 0,
+              }}
+            />
+          ))}
+        </div>
+
+        {/* ── 6. Bottom content — brand + tagline + interactive search ── */}
+        <div
+          className="absolute"
+          style={{
+            zIndex: 60,
+            bottom: isMobile ? 44 : 80,
+            left: isMobile ? 16 : 96,
+            right: isMobile ? 16 : 'auto',
+            maxWidth: isMobile ? undefined : 440,
+          }}
+        >
+          {/* Brand name */}
+          <p
+            className="fade-in-up"
+            style={{
+              fontFamily: "'Anton', sans-serif",
+              fontSize: isMobile ? 18 : 22,
+              fontWeight: 400,
+              color: 'white',
+              opacity: 0.95,
+              letterSpacing: '0.02em',
+              textTransform: 'uppercase',
+              marginBottom: isMobile ? 4 : 8,
+            }}
+          >
+            B4U-GO
+          </p>
+
+          {/* Tagline — short, punchy, communicates what the product does */}
+          <p
+            className="fade-in-up-delay-1"
+            style={{
+              fontSize: isMobile ? 12 : 14,
+              color: 'rgba(255,255,255,0.7)',
+              lineHeight: 1.65,
+              fontFamily: "'Outfit', sans-serif",
+              fontWeight: 300,
+              marginBottom: isMobile ? 14 : 20,
+              maxWidth: 380,
+            }}
+          >
+            Going somewhere special? Tell us the occasion and we'll{' '}
+            <span style={{ color: BRAND_ORANGE, fontWeight: 500 }}>
+              style you in seconds
+            </span>
+            .
+          </p>
+
+          {/* ── Interactive "Where are you going?" search ── */}
+          <div
+            className="fade-in-up-delay-2"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              backgroundColor: isHeroFocused
+                ? 'rgba(255,255,255,0.1)'
+                : 'rgba(255,255,255,0.06)',
+              border: `1.5px solid ${
+                isHeroFocused ? BRAND_ORANGE : 'rgba(255,255,255,0.12)'
+              }`,
+              borderRadius: 14,
+              padding: '4px 5px 4px 16px',
+              transition: 'all 0.25s ease',
+              boxShadow: isHeroFocused
+                ? `0 0 24px ${BRAND_ORANGE_GLOW}`
+                : 'none',
+              backdropFilter: 'blur(12px)',
+              WebkitBackdropFilter: 'blur(12px)',
+            }}
+          >
+            <Search
+              size={18}
+              style={{
+                color: isHeroFocused
+                  ? BRAND_ORANGE
+                  : 'rgba(255,255,255,0.35)',
+                transition: 'color 0.2s',
+                flexShrink: 0,
+              }}
+            />
+            <input
+              ref={heroInputRef}
+              id="hero-search-input"
+              type="text"
+              value={heroQuery}
+              onChange={(e) => setHeroQuery(e.target.value)}
+              onFocus={() => setIsHeroFocused(true)}
+              onBlur={() => setIsHeroFocused(false)}
+              onKeyDown={(e) => e.key === 'Enter' && handleHeroSearch()}
+              placeholder="Where are you going today?"
+              style={{
+                flex: 1,
+                background: 'transparent',
+                border: 'none',
+                outline: 'none',
                 color: 'white',
-                transition: 'transform 150ms, background-color 150ms',
+                fontSize: isMobile ? 13 : 14,
+                fontFamily: "'Outfit', sans-serif",
+                fontWeight: 400,
+                padding: '11px 10px',
+                minWidth: 0,
               }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'scale(1.08)';
-                e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.12)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'scale(1)';
-                e.currentTarget.style.backgroundColor = 'transparent';
-              }}
-              aria-label="Previous figurine"
-            >
-              <ArrowLeft size={26} strokeWidth={2.25} />
-            </button>
+            />
             <button
-              onClick={() => navigate('next')}
-              className="flex items-center justify-center rounded-full cursor-pointer"
+              id="hero-style-me-btn"
+              onClick={handleHeroSearch}
+              onMouseEnter={() => setCtaHovered(true)}
+              onMouseLeave={() => setCtaHovered(false)}
+              className="hero-cta-btn"
               style={{
-                width: isMobile ? 48 : 64,
-                height: isMobile ? 48 : 64,
-                backgroundColor: 'transparent',
-                border: '2px solid white',
-                color: 'white',
-                transition: 'transform 150ms, background-color 150ms',
+                background: ctaHovered ? BRAND_ORANGE_LIGHT : BRAND_ORANGE,
+                border: 'none',
+                borderRadius: 10,
+                padding: isMobile ? '9px 16px' : '10px 22px',
+                color: '#fff',
+                fontSize: isMobile ? 12 : 13,
+                fontFamily: "'Outfit', sans-serif",
+                fontWeight: 600,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 5,
+                boxShadow: ctaHovered
+                  ? `0 4px 20px ${BRAND_ORANGE_GLOW}`
+                  : 'none',
+                transform: ctaHovered ? 'scale(1.04)' : 'scale(1)',
+                transition: 'all 0.25s ease',
               }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'scale(1.08)';
-                e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.12)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'scale(1)';
-                e.currentTarget.style.backgroundColor = 'transparent';
-              }}
-              aria-label="Next figurine"
             >
-              <ArrowRight size={26} strokeWidth={2.25} />
+              Style Me
+              <ArrowRight size={14} strokeWidth={2.5} />
             </button>
+          </div>
+
+          {/* Quick occasion pills */}
+          <div
+            className="fade-in-up-delay-3"
+            style={{
+              marginTop: 12,
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 6,
+            }}
+          >
+            {HERO_SUGGESTIONS.map((s) => (
+              <button
+                key={s}
+                onClick={() => {
+                  setHeroQuery(s);
+                  heroInputRef.current?.focus();
+                }}
+                className="hero-pill"
+                style={{
+                  background: 'rgba(255,255,255,0.05)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  borderRadius: 100,
+                  padding: '5px 14px',
+                  color: 'rgba(255,255,255,0.45)',
+                  fontSize: 11,
+                  fontFamily: "'Outfit', sans-serif",
+                  fontWeight: 400,
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  transition: 'all 0.22s ease',
+                }}
+              >
+                {s}
+              </button>
+            ))}
           </div>
         </div>
 
-        {/* ── 6. Bottom-right "DISCOVER IT" link ── */}
-        <a
-          href="#"
-          className="absolute bottom-6 right-4 sm:bottom-20 sm:right-10 flex items-center no-underline"
-          style={{
-            zIndex: 60,
-            fontFamily: "'Anton', sans-serif",
-            fontSize: 'clamp(20px, 4vw, 56px)',
-            fontWeight: 400,
-            color: 'white',
-            opacity: 0.95,
-            letterSpacing: '-0.02em',
-            lineHeight: 1,
-            textTransform: 'uppercase',
-            textDecoration: 'none',
-            transition: 'opacity 200ms',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.opacity = '1';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.opacity = '0.95';
-          }}
-        >
-          DISCOVER IT
-          <ArrowRight
-            className="w-5 h-5 sm:w-8 sm:h-8 ml-2"
-            strokeWidth={2.25}
-          />
-        </a>
-
       </div>
+      
+      <LoginModal isOpen={isLoginModalOpen} onClose={() => setLoginModalOpen(false)} onLoginSuccess={() => navigate('/closet')} />
     </div>
   );
 }
