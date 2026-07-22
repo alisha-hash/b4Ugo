@@ -10,16 +10,255 @@
   box-sizing: border-box;
 }
 
-html,
-body,
-#root {
+html {
   width: 100%;
   height: 100%;
-  overflow: hidden;
+  scroll-behavior: smooth;
 }
 
 body {
-  font-family: 'Inter', sans-serif;
+  width: 100%;
+  min-height: 100%;
+  font-family: 'Outfit', 'Inter', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-color: #0B1120;
+  color: #ffffff;
 }
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0B1120;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* ═══════════════════════════════════════
+   HERO ANIMATIONS
+   ═══════════════════════════════════════ */
+
+/* Center model — gentle floating bob */
+@keyframes heroFloat {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}
+
+.hero-float {
+  animation: heroFloat 4s ease-in-out infinite;
+}
+
+/* Ghost "B4U-GO" text — subtle parallax drift */
+@keyframes parallaxDrift {
+  0%, 100% {
+    transform: translateX(0) scale(1);
+  }
+  33% {
+    transform: translateX(10px) scale(1.005);
+  }
+  66% {
+    transform: translateX(-6px) scale(0.998);
+  }
+}
+
+.hero-parallax {
+  animation: parallaxDrift 10s ease-in-out infinite;
+}
+
+/* Background figures (left/right) — gentle sway */
+@keyframes bgFigureSway {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-6px) rotate(0.4deg);
+  }
+}
+
+.bg-figure-sway {
+  animation: bgFigureSway 5s ease-in-out infinite;
+}
+
+/* Background figure (back) — slower, subtler sway */
+@keyframes bgFigureSwaySlow {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+.bg-figure-sway-slow {
+  animation: bgFigureSwaySlow 7s ease-in-out infinite;
+}
+
+/* Entrance fade-in-up */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in-up {
+  animation: fadeInUp 0.8s ease-out both;
+}
+
+.fade-in-up-delay-1 {
+  animation: fadeInUp 0.8s 0.15s ease-out both;
+}
+
+.fade-in-up-delay-2 {
+  animation: fadeInUp 0.8s 0.3s ease-out both;
+}
+
+.fade-in-up-delay-3 {
+  animation: fadeInUp 0.8s 0.45s ease-out both;
+}
+
+/* ═══════════════════════════════════════
+   HERO PILL & CTA HOVER STYLES
+   ═══════════════════════════════════════ */
+
+.hero-pill {
+  transition: all 0.22s ease;
+}
+.hero-pill:hover {
+  background: rgba(232, 113, 42, 0.15) !important;
+  border-color: #E8712A !important;
+  color: #F2863D !important;
+}
+
+.hero-cta-btn {
+  transition: all 0.25s ease;
+}
+.hero-cta-btn:active {
+  transform: scale(0.97) !important;
+}
+
+/* ═══════════════════════════════════════
+   DOT INDICATORS
+   ═══════════════════════════════════════ */
+
+.dot-indicator {
+  transition: all 0.3s ease;
+}
+.dot-indicator:hover {
+  opacity: 0.9;
+}
+
+/* ═══════════════════════════════════════
+   SEARCH PAGE — ORANGE ACCENTS
+   ═══════════════════════════════════════ */
+
+.search-submit-btn {
+  transition: all 0.2s ease;
+}
+.search-submit-btn:hover {
+  box-shadow: 0 4px 16px rgba(232, 113, 42, 0.3);
+}
+
+/* ═══════════════════════════════════════
+   RESPONSIVE ADJUSTMENTS
+   ═══════════════════════════════════════ */
+
+/* Prevent text selection on hero interactive areas */
+.hero-no-select {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Smooth placeholder color */
+input::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+  transition: color 0.2s;
+}
+input:focus::placeholder {
+  color: rgba(255, 255, 255, 0.2);
+}
+
+/* ═══════════════════════════════════════
+   STYLE ME PAGE — GENERATING OVERLAY
+   ═══════════════════════════════════════ */
+
+@keyframes generatingPulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+}
+
+.generating-pulse {
+  animation: generatingPulse 1.8s ease-in-out infinite;
+}
+
+@keyframes generatingBar {
+  0% {
+    width: 0%;
+  }
+  50% {
+    width: 70%;
+  }
+  100% {
+    width: 100%;
+  }
+}
+
+.generating-bar {
+  animation: generatingBar 3s ease-in-out forwards;
+}
+
+/* Spinner for loading states */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+/* ═══════════════════════════════════════
+   RESULTS PAGE — ANIMATIONS
+   ═══════════════════════════════════════ */
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
